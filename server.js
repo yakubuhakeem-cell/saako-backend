@@ -11,6 +11,7 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://yakubuhakeem-cell.
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_FROM = process.env.TWILIO_FROM;
+const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM;
 
 let twilioClient;
 if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
@@ -61,21 +62,34 @@ app.post('/api/send-sms', async (req, res) => {
     return res.status(500).json({ error: 'SMS service is not configured' });
   }
 
-  const { to, message } = req.body || {};
+  const { to, message, channel = 'sms' } = req.body || {};
   if (!to || !message) {
     return res.status(400).json({ error: 'Missing to or message' });
   }
 
+  let sendFrom = TWILIO_FROM;
+  let sendTo = to;
+
+  if (channel === 'whatsapp') {
+    if (!TWILIO_WHATSAPP_FROM) {
+      return res.status(500).json({ error: 'WhatsApp sender is not configured' });
+    }
+    sendFrom = TWILIO_WHATSAPP_FROM.replace(/^whatsapp:/, '');
+    sendTo = to.replace(/^whatsapp:/, '');
+    sendFrom = `whatsapp:${sendFrom}`;
+    sendTo = `whatsapp:${sendTo}`;
+  }
+
   try {
     const sent = await twilioClient.messages.create({
-      from: TWILIO_FROM,
-      to,
+      from: sendFrom,
+      to: sendTo,
       body: message,
     });
-    res.json({ success: true, sid: sent.sid });
+    res.json({ success: true, sid: sent.sid, channel });
   } catch (err) {
     console.error('sendSms error', err);
-    res.status(500).json({ error: 'Failed to send SMS', details: err.message });
+    res.status(500).json({ error: 'Failed to send message', details: err.message });
   }
 });
 
