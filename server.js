@@ -8,6 +8,16 @@ const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'data.json');
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://yakubuhakeem-cell.github.io';
 
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_FROM = process.env.TWILIO_FROM;
+
+let twilioClient;
+if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
+  const twilio = require('twilio');
+  twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+}
+
 app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -44,6 +54,29 @@ app.post('/api/state', (req, res) => {
     return res.status(500).json({ error: 'Failed to write state' });
   }
   res.json({ success: true });
+});
+
+app.post('/api/send-sms', async (req, res) => {
+  if (!twilioClient) {
+    return res.status(500).json({ error: 'SMS service is not configured' });
+  }
+
+  const { to, message } = req.body || {};
+  if (!to || !message) {
+    return res.status(400).json({ error: 'Missing to or message' });
+  }
+
+  try {
+    const sent = await twilioClient.messages.create({
+      from: TWILIO_FROM,
+      to,
+      body: message,
+    });
+    res.json({ success: true, sid: sent.sid });
+  } catch (err) {
+    console.error('sendSms error', err);
+    res.status(500).json({ error: 'Failed to send SMS', details: err.message });
+  }
 });
 
 app.get('/health', (req, res) => {
