@@ -74,10 +74,11 @@ app.post('/api/send-sms', async (req, res) => {
     if (!TWILIO_WHATSAPP_FROM) {
       return res.status(500).json({ error: 'WhatsApp sender is not configured' });
     }
+
     sendFrom = TWILIO_WHATSAPP_FROM.replace(/^whatsapp:/, '');
     sendTo = to.replace(/^whatsapp:/, '');
-    sendFrom = `whatsapp:${sendFrom}`;
-    sendTo = `whatsapp:${sendTo}`;
+    sendFrom = 'whatsapp:' + sendFrom;
+    sendTo = 'whatsapp:' + sendTo;
   }
 
   try {
@@ -93,14 +94,18 @@ app.post('/api/send-sms', async (req, res) => {
   }
 });
 
+app.get('/send-test', (req, res) => {
+  res.sendFile(path.join(__dirname, 'send-test.html'));
+});
+
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
 app.get('/', (req, res) => {
-  res.send('Server is running');
+  res.send('<html><head><meta charset='utf-8'><title>Saako backend</title></head><body><h1>Saako backend</h1><p>Server is running.</p><p>Open <a href='/send-test'>/send-test</a> to send an SMS or WhatsApp message.</p></body></html>');
 });
 
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log('Server listening on port ' + PORT);
 });
